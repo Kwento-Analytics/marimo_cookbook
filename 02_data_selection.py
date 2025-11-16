@@ -23,14 +23,12 @@ def _():
     import pandas as pd
     import numpy as np
     from vega_datasets import data
-
     return alt, data, mo, np, pd
 
 
 @app.cell
 def _(mo):
-    mo.md(
-        """
+    mo.md("""
     # Interactive Data Selection & Brushing
 
     This demo showcases Altair's powerful selection capabilities integrated with Marimo.
@@ -43,8 +41,7 @@ def _(mo):
     - **Linked views** - Selection syncs across multiple charts
     - **Live statistics** - Compare selected vs all data
     - **Filters** - Narrow down the dataset before selecting
-    """
-    )
+    """)
     return
 
 
@@ -135,65 +132,131 @@ def _(cars, cylinders_filter, mpg_range, origin_filter, year_range):
 
 @app.cell
 def _(filtered_cars, mo):
-    mo.md(
-        f"""
+    mo.md(f"""
     ### 📊 Dataset Overview: {len(filtered_cars)} cars after filtering
-    """
+    """)
+    return
+
+
+@app.cell
+def _(mo):
+    # Define column options for dropdowns (shared across all column selectors)
+    _numeric_columns = {
+        "MPG": "MPG",
+        "Horsepower": "Horsepower",
+        "Weight": "Weight",
+        "Acceleration": "Acceleration",
+        "Displacement": "Displacement",
+        "Cylinders": "Cylinders",
+        "Year": "Year",
+    }
+
+    # Column selection dropdowns for Chart 1
+    x1_col = mo.ui.dropdown(
+        options=_numeric_columns, value="Horsepower", label="Chart 1 - X axis"
+    )
+
+    y1_col = mo.ui.dropdown(
+        options=_numeric_columns, value="MPG", label="Chart 1 - Y axis"
+    )
+
+    # Column selection dropdowns for Chart 2
+    x2_col = mo.ui.dropdown(
+        options=_numeric_columns, value="Weight", label="Chart 2 - X axis"
+    )
+
+    y2_col = mo.ui.dropdown(
+        options=_numeric_columns, value="Acceleration", label="Chart 2 - Y axis"
+    )
+    return x1_col, x2_col, y1_col, y2_col
+
+
+@app.cell
+def _(mo, x1_col, x2_col, y1_col, y2_col):
+    # Display column selectors
+    mo.md("## 🔗 Scatter Plots - Choose Your Variables")
+    mo.hstack(
+        [
+            mo.vstack([mo.md("**Chart 1**"), x1_col, y1_col], align="start"),
+            mo.vstack([mo.md("**Chart 2**"), x2_col, y2_col], align="start"),
+        ],
+        justify="start",
+        gap=3,
     )
     return
 
 
 @app.cell
-def _(alt, filtered_cars, mo):
-    # Create brush and click selections
-    brush = alt.selection_interval(name="brush")
-    click = alt.selection_point(name="click")
+def _(alt, filtered_cars, mo, x1_col, y1_col):
+    # Create brush and click selections for Chart 1
+    brush1 = alt.selection_interval(name="brush1")
+    click1 = alt.selection_point(name="click1")
 
-    # Main scatter plot: Horsepower vs MPG
+    # Main scatter plot with selected columns
     base_scatter1 = (
         alt.Chart(filtered_cars)
         .mark_point(size=40, filled=True)
         .encode(
-            x=alt.X("Horsepower:Q", scale=alt.Scale(zero=False)),
-            y=alt.Y("MPG:Q", scale=alt.Scale(zero=False)),
+            x=alt.X(f"{x1_col.selected_key}:Q", scale=alt.Scale(zero=False)),
+            y=alt.Y(f"{y1_col.selected_key}:Q", scale=alt.Scale(zero=False)),
             color=alt.condition(
-                brush | click,
+                brush1 | click1,
                 alt.Color("Origin:N", scale=alt.Scale(scheme="category10")),
                 alt.value("lightgray"),
             ),
-            opacity=alt.condition(brush | click, alt.value(1.0), alt.value(0.3)),
-            tooltip=["Name:N", "Horsepower:Q", "MPG:Q", "Origin:N", "Year:O"],
+            opacity=alt.condition(brush1 | click1, alt.value(1.0), alt.value(0.3)),
+            tooltip=[
+                "Name:N",
+                f"{x1_col.selected_key}:Q",
+                f"{y1_col.selected_key}:Q",
+                "Origin:N",
+                "Year:O",
+            ],
         )
-        .add_params(brush, click)
+        .add_params(brush1, click1)
         .properties(
-            width=400, height=300, title="Horsepower vs MPG (Brush or Click to Select)"
+            width=400,
+            height=300,
+            title=f"{y1_col.selected_key} vs {x1_col.selected_key}",
         )
     )
 
     scatter1_ui = mo.ui.altair_chart(base_scatter1)
-    return brush, click, scatter1_ui
+    return (scatter1_ui,)
 
 
 @app.cell
-def _(alt, brush, click, filtered_cars, mo):
-    # Second linked scatter plot: Weight vs Acceleration
+def _(alt, filtered_cars, mo, x2_col, y2_col):
+    # Create brush and click selections for Chart 2
+    brush2 = alt.selection_interval(name="brush2")
+    click2 = alt.selection_point(name="click2")
+
+    # Second scatter plot with selected columns
     base_scatter2 = (
         alt.Chart(filtered_cars)
         .mark_point(size=40, filled=True)
         .encode(
-            x=alt.X("Weight:Q", scale=alt.Scale(zero=False)),
-            y=alt.Y("Acceleration:Q", scale=alt.Scale(zero=False)),
+            x=alt.X(f"{x2_col.selected_key}:Q", scale=alt.Scale(zero=False)),
+            y=alt.Y(f"{y2_col.selected_key}:Q", scale=alt.Scale(zero=False)),
             color=alt.condition(
-                brush | click,
+                brush2 | click2,
                 alt.Color("Origin:N", scale=alt.Scale(scheme="category10")),
                 alt.value("lightgray"),
             ),
-            opacity=alt.condition(brush | click, alt.value(1.0), alt.value(0.3)),
-            tooltip=["Name:N", "Weight:Q", "Acceleration:Q", "Origin:N", "Year:O"],
+            opacity=alt.condition(brush2 | click2, alt.value(1.0), alt.value(0.3)),
+            tooltip=[
+                "Name:N",
+                f"{x2_col.selected_key}:Q",
+                f"{y2_col.selected_key}:Q",
+                "Origin:N",
+                "Year:O",
+            ],
         )
-        .add_params(brush, click)
+        .add_params(brush2, click2)
         .properties(
-            width=400, height=300, title="Weight vs Acceleration (Linked Selection)"
+            width=400,
+            height=300,
+            title=f"{y2_col.selected_key} vs {x2_col.selected_key}",
         )
     )
 
@@ -203,15 +266,14 @@ def _(alt, brush, click, filtered_cars, mo):
 
 @app.cell
 def _(mo, scatter1_ui, scatter2_ui):
-    # Display linked charts side by side
-    mo.md("## 🔗 Linked Scatter Plots")
+    # Display charts side by side
     mo.hstack([scatter1_ui, scatter2_ui], justify="center")
     return
 
 
 @app.cell
 def _(pd, scatter1_ui):
-    # Get selected data - mo.ui.altair_chart returns a DataFrame of selected rows
+    # Get selected data from Chart 1
     selection = scatter1_ui.value
 
     if (
@@ -250,7 +312,7 @@ def _(mo, num_selected, selected_cars):
             "*No data selected. Brush or click on the charts above to select points.*"
         )
 
-    # Marimo has issues wraping table displays in a control statement, so here we display the table no matter what.
+    # Marimo has issues wrapping table displays in a control statement, so here we display the table no matter what.
     # Show key columns for selected cars
     mo.ui.table(selected_cars)
     return
@@ -279,10 +341,18 @@ def _(filtered_cars, mo, num_selected, pd, selected_cars):
             ],
             "Selected": [
                 num_selected,
-                f"{selected_cars['MPG'].mean():.2f}",
-                f"{selected_cars['Horsepower'].mean():.2f}",
-                f"{selected_cars['Weight'].mean():.2f}",
-                f"{selected_cars['Acceleration'].mean():.2f}",
+                f"{selected_cars['MPG'].mean():.2f}" if num_selected > 0 else "N/A",
+                (
+                    f"{selected_cars['Horsepower'].mean():.2f}"
+                    if num_selected > 0
+                    else "N/A"
+                ),
+                f"{selected_cars['Weight'].mean():.2f}" if num_selected > 0 else "N/A",
+                (
+                    f"{selected_cars['Acceleration'].mean():.2f}"
+                    if num_selected > 0
+                    else "N/A"
+                ),
             ],
         }
     )
@@ -336,6 +406,11 @@ def _(mo, num_selected, selected_cars):
     For now, you can copy the data from the table above.*
     """
     )
+    return
+
+
+@app.cell
+def _():
     return
 
 
